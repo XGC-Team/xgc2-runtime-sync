@@ -125,6 +125,20 @@ TEST(RuntimeNodeSmokeTest, PublishesCycleAndServesStatus) {
   EXPECT_NE(std::string::npos, request.response.reason.find("adapters=1/1"));
   EXPECT_NE(std::string::npos, request.response.reason.find("weaknet_state="));
   EXPECT_NE(std::string::npos, request.response.reason.find("clock_source=mock_ground_station"));
+
+  // Parameters are read once at startup: a later parameter-server write does
+  // not reach the running node (change it and restart the node instead).
+  ros::param::set("/swarm_runtime_node/clock_phase", std::string("in_flight"));
+  const ros::Time settle = ros::Time::now() + ros::Duration(0.3);
+  while (ros::ok() && ros::Time::now() < settle) {
+    ros::spinOnce();
+    rate.sleep();
+  }
+  periodic_sync::GetRuntimeStatus after_write;
+  after_write.request.session_id = "smoke_session";
+  ASSERT_TRUE(client.call(after_write));
+  EXPECT_EQ("preflight", after_write.response.clock_phase);
+  EXPECT_TRUE(after_write.response.running);
 }
 
 int main(int argc, char** argv) {

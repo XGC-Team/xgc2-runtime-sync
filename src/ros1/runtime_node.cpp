@@ -683,10 +683,9 @@ class SwarmRuntimeNode {
     clock_phase_ = swarm_sync::ClockMonitor::phaseFromString(clock_phase_param_);
   }
 
+  // clock_phase is read once in loadClockPolicy; XGC2 nodes never poll the
+  // parameter server after startup.
   swarm_sync::ClockMonitorResult sampleClock() {
-    ros::NodeHandle pnh("~");
-    pnh.param<std::string>("clock_phase", clock_phase_param_, clock_phase_param_);
-    clock_phase_ = swarm_sync::ClockMonitor::phaseFromString(clock_phase_param_);
     if (clock_policy_.provider == "mock") {
       swarm_sync::ClockMonitorResult result;
       result.phase = clock_phase_;
