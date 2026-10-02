@@ -1,7 +1,7 @@
 schema: xgc2.product.v1
 id: xgc2-runtime-sync
 name: XGC2 Runtime Sync
-version: 1.6.2-13
+version: 1.6.2-14
 kind: ros1-apt
 summary: Runtime synchronization coordinator, weak-network telemetry, and swarm sync
   core for XGC2 ROS1 multi-agent systems.
@@ -36,4 +36,4 @@ ownership:
   - /opt/ros/noetic/lib/periodic_sync/swarm_runtime_node
 release:
   apt_versions:
-    focal: 1.6.2-13
+    focal: 1.6.2-14
