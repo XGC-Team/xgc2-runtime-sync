@@ -120,6 +120,17 @@ std::optional<CycleEvent> CycleScheduler::tick(int64_t now_ns, bool clock_ok) {
   return event;
 }
 
+bool CycleScheduler::due(int64_t now_ns) const {
+  if (!running_ || config_.period_ns <= 0 || now_ns < config_.epoch_ns) {
+    return false;
+  }
+  const uint64_t cycle_id = computeCycleId(now_ns);
+  if (config_.max_cycle > 0 && cycle_id > config_.max_cycle) {
+    return false;
+  }
+  return !has_emitted_ || cycle_id > last_emitted_cycle_;
+}
+
 bool CycleScheduler::running() const {
   return running_;
 }

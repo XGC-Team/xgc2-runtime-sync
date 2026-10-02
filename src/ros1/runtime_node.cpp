@@ -284,7 +284,13 @@ class SwarmRuntimeNode {
 
   void timerCallback(const ros::TimerEvent&) {
     const ros::Time now = ros::Time::now();
-    last_clock_result_ = sampleClock();
+    // Only the start gate of an armed session and an emitted cycle read the
+    // clock state. Sample it for those ticks only: for the chrony provider a
+    // sample runs chronyc twice, and polling at poll_rate_hz (200 Hz) spawned
+    // 400 processes per second whose results nothing read.
+    if (session_.state() == swarm_sync::SessionState::ARMED || scheduler_.due(toNs(now))) {
+      last_clock_result_ = sampleClock();
+    }
     const auto& clock = last_clock_result_.state;
 
     session_.startIfDue(toNs(now), clock);
@@ -683,10 +689,9 @@ class SwarmRuntimeNode {
     clock_phase_ = swarm_sync::ClockMonitor::phaseFromString(clock_phase_param_);
   }
 
+  // clock_phase is read once in loadClockPolicy; XGC2 nodes never poll the
+  // parameter server after startup.
   swarm_sync::ClockMonitorResult sampleClock() {
-    ros::NodeHandle pnh("~");
-    pnh.param<std::string>("clock_phase", clock_phase_param_, clock_phase_param_);
-    clock_phase_ = swarm_sync::ClockMonitor::phaseFromString(clock_phase_param_);
     if (clock_policy_.provider == "mock") {
       swarm_sync::ClockMonitorResult result;
       result.phase = clock_phase_;

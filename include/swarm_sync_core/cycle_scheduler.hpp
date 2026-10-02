@@ -53,6 +53,8 @@ public:
   uint64_t computeCycleId(int64_t now_ns) const;
   int64_t expectedTimeNs(uint64_t cycle_id) const;
   std::optional<CycleEvent> tick(int64_t now_ns, bool clock_ok = true);
+  // True exactly when tick(now_ns) would emit a cycle; has no side effects.
+  bool due(int64_t now_ns) const;
 
   bool running() const;
   const CycleSchedulerConfig& config() const;

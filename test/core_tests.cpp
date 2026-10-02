@@ -296,6 +296,43 @@ TEST(CycleSchedulerTest, EmitsExpectedActualAndJitterForTwentyHzHundredCycles) {
   EXPECT_FALSE(scheduler.tick(kEpochNs + 99 * kPeriodNs + 10000).has_value());
 }
 
+TEST(CycleSchedulerTest, DueMatchesTickWithoutSideEffects) {
+  CycleScheduler scheduler;
+  CycleSchedulerConfig config;
+  config.session_id = "session-a";
+  config.task_id = "formation";
+  config.epoch_ns = 1000000000;
+  config.period_ns = 50000000;
+  config.start_cycle = 2;
+  config.max_cycle = 8;
+  ASSERT_TRUE(scheduler.configure(config));
+  EXPECT_FALSE(scheduler.due(config.epoch_ns));  // not started
+
+  scheduler.start();
+  // 5 ms poll ticks from before the epoch past max_cycle, plus a jump that
+  // skips cycles and repeated polls inside one period.
+  std::vector<int64_t> times;
+  for (int64_t t = config.epoch_ns - 20000000; t < config.epoch_ns + 500000000; t += 5000000) {
+    times.push_back(t);
+    times.push_back(t);
+  }
+  times.push_back(config.epoch_ns + 120000000);
+  size_t emitted = 0;
+  for (const int64_t t : times) {
+    const bool due = scheduler.due(t);
+    EXPECT_EQ(due, scheduler.due(t)) << t;
+    const auto event = scheduler.tick(t);
+    EXPECT_EQ(due, event.has_value()) << t;
+    emitted += event.has_value() ? 1u : 0u;
+  }
+  EXPECT_EQ(7u, emitted);  // cycles 2..8, one emission each
+  EXPECT_FALSE(scheduler.running());
+
+  scheduler.start();
+  scheduler.stop();
+  EXPECT_FALSE(scheduler.due(config.epoch_ns + 1000000000));
+}
+
 TEST(CycleSchedulerTest, StopPreventsNewCycles) {
   CycleScheduler scheduler;
   CycleSchedulerConfig config;
