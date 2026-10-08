@@ -41,3 +41,14 @@ start versus native RUNNING, held observations, sticky terminal receipts and
 effective policy sources. Mock clock was selected; production chrony latency
 is not measured. C++ host threads/FD/RSS soak and crash/weak-network matrix are
 still required before release.
+
+Packaging follow-up: Debian revision incremented for the unpublished source candidate;
+package control now declares formal libxgc2-xrpc1>=0.1.0 and Boost JSON>=1.75.
+No package was published or installed. The release-set snapshot is unchanged.
+Python SDK consumers use an explicitly selected interpreter>=3.10 with the
+formal wheel, not a made-up Python SDK Debian package or replaced system Python.
+This product exposes native C++ control; it adds no production Python SDK
+consumer. Formal Python tooling, when used, requires the selected interpreter.
+Focal controlled runtime/toolchain and that selected Python environment remain
+unverified deployment gates. No new host Gazebo/GDB fixture was launched after
+the user hard stop.

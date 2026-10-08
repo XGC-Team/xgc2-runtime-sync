@@ -84,7 +84,7 @@ Section: misc
 Priority: optional
 Architecture: ${ARCH}
 Maintainer: XGC2 <apt@example.com>
-Depends: ros-noetic-message-runtime, ros-noetic-roscpp, ros-noetic-std-msgs
+Depends: libxgc2-xrpc1 (>= 0.1.0), libboost-json-dev (>= 1.75), ros-noetic-message-runtime, ros-noetic-roscpp, ros-noetic-std-msgs
 Description: XGC2 runtime synchronization coordinator, weak-network telemetry, messages, and swarm sync core for ROS1
 EOF
 printf 'xgc2-runtime-sync package\n' > "${pkg_root}/usr/share/doc/${PACKAGE}/README"
