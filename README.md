@@ -23,7 +23,7 @@ rosrun periodic_sync sync_coordinator _num_uavs:=1
 ## Runtime
 
 ```bash
-roslaunch periodic_sync swarm_runtime.launch
+roslaunch periodic_sync swarm_runtime.launch control_socket:="$GRANTED_CONTROL_SOCKET"
 roslaunch periodic_sync ground_station.launch participant_count:=3 frequency_hz:=20.0
 ```
 
@@ -57,7 +57,7 @@ correct a large boot-time error before core ROS nodes or sessions start.
 Runtime Sync itself never runs `chronyc makestep`.
 
 In flight, system time step is treated as disallowed. Keep chrony slewing and
-monitor `/swarm_sync/runtime_health` plus `/swarm_sync/get_runtime_status`;
+monitor `/swarm_sync/runtime_health` plus the XRPC `/v1/runtime-sync/status` snapshot;
 when offset or uncertainty leaves the gate, mark the runtime degraded rather
 than forcing a resync.
 
@@ -73,3 +73,5 @@ Preflight check:
 GROUND_TIME_SOURCE=192.168.10.10 MAX_OFFSET_MS=2.0 MAX_UNCERTAINTY_MS=2.0 \
   rosrun periodic_sync check_chrony.sh
 ```
+
+Local session control uses [Runtime Sync v1](contracts/runtime-sync-v1.md). The runtime owner must grant `GRANTED_CONTROL_SOCKET` in an existing private runtime directory. Platform ROS control services have been removed.

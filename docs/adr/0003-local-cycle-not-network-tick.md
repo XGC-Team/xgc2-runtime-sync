@@ -18,7 +18,7 @@ advance cycles locally while still exposing timing evidence.
 ## Consequences
 
 - Clock quality is a hard runtime input.
-- StartSession must include a shared epoch and period.
+- XRPC start request must include a shared epoch and period.
 - Missed historical cycles are skipped rather than replayed.
 - The runtime reports expected time, actual time, jitter, and clock quality for
   each cycle.

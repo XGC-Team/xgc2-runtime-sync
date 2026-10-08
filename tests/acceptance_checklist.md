@@ -16,7 +16,7 @@
 - [ ] LinkHealth 按 peer/channel 输出。
 - [ ] WeaknetStateMachine 可迁移且有 reason/evidence。
 - [ ] Ground Station 可显示 per-edge 指标。
-- [ ] RuntimeHealth/GetRuntimeStatus 输出 offset、uncertainty、quality、source、phase。
+- [ ] RuntimeHealth/XRPC status 输出 offset、uncertainty、quality、source、phase。
 - [ ] 飞行中 clock 异常只标记 degraded/bad，不执行 step。
 - [ ] VRPN 10-30 ms age 诊断要求时钟误差先压到 1-2 ms 量级。
 

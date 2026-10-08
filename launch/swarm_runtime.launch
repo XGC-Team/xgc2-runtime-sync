@@ -1,5 +1,6 @@
 <?xml version="1.0"?>
 <launch>
+  <arg name="control_socket"/>
   <arg name="session_config" default="$(find periodic_sync)/config/session.yaml"/>
   <arg name="channels_config" default="$(find periodic_sync)/config/channels.yaml"/>
   <arg name="ros1_adapters_config" default="$(find periodic_sync)/config/ros1_adapters.yaml"/>
@@ -20,6 +21,7 @@
         type="swarm_runtime_node"
         name="swarm_runtime_node"
         output="screen">
+    <param name="control_socket" value="$(arg control_socket)"/>
     <param name="session_config" value="$(arg session_config)"/>
     <param name="channels_config" value="$(arg channels_config)"/>
     <param name="ros1_adapters_config" value="$(arg ros1_adapters_config)"/>

@@ -1,8 +1,10 @@
 <launch>
+  <arg name="control_socket"/>
   <node pkg="periodic_sync"
         type="swarm_runtime_node"
         name="swarm_runtime_node"
         output="screen">
+    <param name="control_socket" value="$(arg control_socket)"/>
     <param name="team_id" value="test_team"/>
     <param name="session_id" value="smoke_session"/>
     <param name="task_id" value="smoke_task"/>
@@ -36,5 +38,7 @@ rules:
   <test test-name="runtime_node_smoke"
         pkg="periodic_sync"
         type="runtime_node_smoke_test"
-        time-limit="10.0"/>
+        time-limit="15.0">
+    <param name="control_socket" value="$(arg control_socket)"/>
+  </test>
 </launch>

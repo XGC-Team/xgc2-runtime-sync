@@ -1,5 +1,8 @@
-cmake_minimum_required(VERSION 3.0.2)
+cmake_minimum_required(VERSION 3.16)
 project(periodic_sync)
+find_package(XgcXrpc REQUIRED CONFIG)
+find_package(Boost 1.75 REQUIRED COMPONENTS json)
+find_package(Threads REQUIRED)
 
 find_package(catkin REQUIRED COMPONENTS
   message_generation
@@ -25,13 +28,6 @@ add_message_files(
   SyncEvent.msg
   SyncedCycle.msg
   WeakNetState.msg
-)
-
-add_service_files(
-  FILES
-  GetRuntimeStatus.srv
-  StartSession.srv
-  StopSession.srv
 )
 
 generate_messages(
@@ -91,6 +87,10 @@ target_link_libraries(sync_coordinator
   ${catkin_LIBRARIES}
 )
 
+add_library(swarm_sync_control src/core/runtime_control.cpp)
+target_compile_features(swarm_sync_control PUBLIC cxx_std_20)
+target_link_libraries(swarm_sync_control PUBLIC XgcXrpc::http Boost::json Threads::Threads)
+
 add_executable(swarm_runtime_node
   src/ros1/runtime_node.cpp
 )
@@ -98,8 +98,9 @@ add_dependencies(swarm_runtime_node
   ${${PROJECT_NAME}_EXPORTED_TARGETS}
   ${catkin_EXPORTED_TARGETS}
 )
-target_compile_features(swarm_runtime_node PUBLIC cxx_std_17)
+target_compile_features(swarm_runtime_node PUBLIC cxx_std_20)
 target_link_libraries(swarm_runtime_node
+  swarm_sync_control
   swarm_sync_ros1_adapter
   swarm_sync_core
   ${catkin_LIBRARIES}
@@ -123,7 +124,7 @@ set_target_properties(swarm_ground_station_node PROPERTIES
   INSTALL_RPATH "$ORIGIN/.."
 )
 
-install(TARGETS swarm_sync_core swarm_sync_ros1_adapter sync_coordinator swarm_runtime_node swarm_ground_station_node
+install(TARGETS swarm_sync_control swarm_sync_core swarm_sync_ros1_adapter sync_coordinator swarm_runtime_node swarm_ground_station_node
   ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
   LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
   RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
@@ -143,11 +144,6 @@ install(DIRECTORY msg/
   FILES_MATCHING PATTERN "*.msg"
 )
 
-install(DIRECTORY srv/
-  DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}/srv
-  FILES_MATCHING PATTERN "*.srv"
-)
-
 if(CATKIN_ENABLE_TESTING)
   find_package(rostest REQUIRED)
 
@@ -163,7 +159,8 @@ if(CATKIN_ENABLE_TESTING)
       ${${PROJECT_NAME}_EXPORTED_TARGETS}
       ${catkin_EXPORTED_TARGETS}
     )
-    target_link_libraries(runtime_node_smoke_test gtest ${catkin_LIBRARIES})
+    target_compile_features(runtime_node_smoke_test PUBLIC cxx_std_20)
+    target_link_libraries(runtime_node_smoke_test gtest XgcXrpc::http Boost::json ${catkin_LIBRARIES})
   endif()
 
   add_rostest(test/runtime_node_smoke.test DEPENDENCIES swarm_runtime_node runtime_node_smoke_test)

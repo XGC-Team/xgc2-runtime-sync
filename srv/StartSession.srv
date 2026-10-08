@@ -1,8 +1,0 @@
-string session_id
-string task_id
-time epoch_time
-duration period
-string config_version
----
-bool accepted
-string reason

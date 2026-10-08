@@ -10,15 +10,12 @@
 #include <ros/ros.h>
 
 #include "periodic_sync/BudgetReport.h"
-#include "periodic_sync/GetRuntimeStatus.h"
 #include "periodic_sync/CycleSnapshot.h"
 #include "periodic_sync/PeerLinkHealth.h"
 #include "periodic_sync/PeerSampleStatus.h"
 #include "periodic_sync/Recommendation.h"
 #include "periodic_sync/RuntimeHealth.h"
 #include "periodic_sync/SampleStats.h"
-#include "periodic_sync/StartSession.h"
-#include "periodic_sync/StopSession.h"
 #include "periodic_sync/SyncedCycle.h"
 #include "periodic_sync/WeakNetState.h"
 #include "swarm_sync_core/clock_monitor.hpp"
@@ -26,8 +23,11 @@
 #include "swarm_sync_core/snapshot_builder.hpp"
 #include "swarm_sync_core/cycle_scheduler.hpp"
 #include "swarm_sync_core/session.hpp"
+#include "swarm_sync_core/runtime_control.hpp"
 #include "swarm_sync_core/weaknet/weaknet.hpp"
 #include "swarm_sync_ros1/adapter_config.hpp"
+
+extern char** environ;
 
 namespace {
 
@@ -165,9 +165,21 @@ class SwarmRuntimeNode {
     weaknet_state_pub_ = nh_.advertise<periodic_sync::WeakNetState>("weaknet_state", 10, false);
     recommendation_pub_ = nh_.advertise<periodic_sync::Recommendation>("recommendation", 10, false);
     budget_pub_ = nh_.advertise<periodic_sync::BudgetReport>("budget_report", 1, true);
-    start_srv_ = nh_.advertiseService("/swarm_sync/start_session", &SwarmRuntimeNode::startCallback, this);
-    stop_srv_ = nh_.advertiseService("/swarm_sync/stop_session", &SwarmRuntimeNode::stopCallback, this);
-    status_srv_ = nh_.advertiseService("/swarm_sync/get_runtime_status", &SwarmRuntimeNode::statusCallback, this);
+    std::string control_socket;
+    if (!pnh.getParam("control_socket", control_socket) || control_socket.empty()) {
+      ROS_ERROR("control_socket must be an explicit private runtime allocation");
+      return false;
+    }
+    xgc2::xrpc::RuntimePolicyOptions control_policy;
+    for (char** item = environ; item && *item; ++item) {
+      std::string_view entry(*item);
+      if (!entry.starts_with("XGC2_XRPC_")) continue;
+      const auto separator = entry.find('=');
+      control_policy.environment.emplace_back(entry.substr(0, separator), entry.substr(separator + 1));
+    }
+    control_ = std::make_unique<swarm_sync::RuntimeControl>(control_socket, std::move(control_policy));
+    control_timer_ = nh_.createWallTimer(ros::WallDuration(0.005),
+        &SwarmRuntimeNode::controlCallback, this);
 
     timer_ = nh_.createTimer(
         ros::Duration(1.0 / std::max(1.0, poll_rate_hz_)),
@@ -187,6 +199,7 @@ class SwarmRuntimeNode {
         ROS_ERROR_STREAM("auto-start blocked by clock gate: " << session_.reason());
       }
     }
+    control_->publish(controlSnapshot());
     publishBudget();
     publishHealth();
     return true;
@@ -227,59 +240,57 @@ class SwarmRuntimeNode {
     return true;
   }
 
-  bool startCallback(periodic_sync::StartSession::Request& request,
-                     periodic_sync::StartSession::Response& response) {
-    auto next_config = config_;
-    if (!request.session_id.empty()) {
-      next_config.session_id = request.session_id;
-    }
-    if (!request.task_id.empty()) {
-      next_config.task_id = request.task_id;
-    }
-    int64_t requested_period_ns = next_config.period_ns;
-    if (request.period.toSec() > 0.0) {
-      requested_period_ns = toNs(request.period);
-    }
-    if (!swarm_sync::CycleScheduler::isValidPeriodNs(requested_period_ns)) {
-      response.accepted = false;
-      response.reason = "period_ns outside supported 0.5-50 Hz range";
-      return true;
-    }
-    next_config.period_ns = requested_period_ns;
-    next_config.epoch_ns = toNs(request.epoch_time);
-    config_ = next_config;
-
-    last_clock_result_ = sampleClock();
-    response.accepted = startSession(config_.epoch_ns, config_.period_ns, last_clock_result_.state);
-    response.reason = response.accepted ? "accepted" : session_.reason();
-    return true;
+  swarm_sync::RuntimeSnapshot controlSnapshot() const {
+    swarm_sync::RuntimeSnapshot s;
+    s.revision = control_revision_; s.desired_revision = desired_revision_;
+    s.applied_revision = applied_revision_; s.current_cycle = current_cycle_;
+    s.epoch_ns = config_.epoch_ns; s.period_ns = config_.period_ns;
+    s.running = session_.running(); s.state = stateName(session_.state());
+    s.session_id = config_.session_id; s.task_id = config_.task_id;
+    s.clock_ok = last_clock_result_.state.clock_ok;
+    s.clock_offset_ns = last_clock_result_.state.offset_ns;
+    s.clock_uncertainty_ns = last_clock_result_.state.uncertainty_ns;
+    s.clock_quality = toMsgClockQuality(last_clock_result_.state.quality);
+    s.clock_source = last_clock_result_.state.source;
+    s.clock_phase = swarm_sync::ClockMonitor::phaseToString(clock_phase_);
+    s.reason = runtimeReason(); return s;
   }
 
-  bool stopCallback(periodic_sync::StopSession::Request& request,
-                    periodic_sync::StopSession::Response& response) {
-    scheduler_.stop();
-    session_.stop(request.reason.empty() ? "stopped by service" : request.reason);
-    response.accepted = true;
-    response.message = "stopped";
-    publishHealth();
-    return true;
-  }
-
-  bool statusCallback(periodic_sync::GetRuntimeStatus::Request&,
-                      periodic_sync::GetRuntimeStatus::Response& response) {
-    response.running = session_.running();
-    response.state = stateName(session_.state());
-    response.current_cycle = current_cycle_;
-    last_clock_result_ = sampleClock();
-    response.clock_ok = last_clock_result_.state.clock_ok;
-    response.clock_offset_ns = last_clock_result_.state.offset_ns;
-    response.clock_uncertainty_ns = last_clock_result_.state.uncertainty_ns;
-    response.clock_quality = toMsgClockQuality(last_clock_result_.state.quality);
-    response.clock_source = last_clock_result_.state.source;
-    response.clock_phase = swarm_sync::ClockMonitor::phaseToString(clock_phase_);
-    response.zenoh_connected = false;
-    response.reason = runtimeReason();
-    return true;
+  void controlCallback(const ros::WallTimerEvent&) {
+    control_->process([this](const swarm_sync::RuntimeCommand& c) {
+      swarm_sync::RuntimeOutcome out;
+      if (c.expected_revision != desired_revision_) {
+        out.status = 409; out.code = "conflict"; out.detail = "configuration revision changed";
+        out.operation_state = "rejected";
+      } else if (c.kind == swarm_sync::RuntimeCommand::Kind::Stop) {
+        if (c.session_id != config_.session_id) {
+          out.status = 409; out.code = "conflict"; out.detail = "session binding mismatch";
+          out.operation_state = "rejected";
+        } else {
+          scheduler_.stop(); session_.stop(c.reason.empty() ? "stopped by XRPC" : c.reason);
+          applied_revision_ = ++desired_revision_; ++control_revision_; publishHealth(false);
+        }
+      } else if (session_.state() == swarm_sync::SessionState::ARMED || session_.running()) {
+        out.status = 409; out.code = "conflict"; out.detail = "stop active session before replacing it";
+        out.operation_state = "rejected";
+      } else {
+        // Validation and clock gate precede changing desired configuration.
+        last_clock_result_ = sampleClock();
+        if (!last_clock_result_.state.clock_ok || last_clock_result_.state.quality == swarm_sync::ClockQuality::BAD) {
+          out.status = 409; out.code = "conflict"; out.detail = "clock gate rejected start";
+          out.operation_state = "rejected";
+        } else {
+          config_.session_id = c.session_id; config_.task_id = c.task_id;
+          ++desired_revision_; ++control_revision_;
+          if (!startSession(c.epoch_ns, c.period_ns, last_clock_result_.state)) {
+            out.status = 409; out.code = "conflict"; out.detail = session_.reason();
+            out.operation_state = "failed";
+          } else out.operation_state = "accepted";
+        }
+      }
+      out.snapshot = controlSnapshot(); return out;
+    });
+    control_->publish(controlSnapshot());
   }
 
   void timerCallback(const ros::TimerEvent&) {
@@ -293,10 +304,16 @@ class SwarmRuntimeNode {
     }
     const auto& clock = last_clock_result_.state;
 
+    const auto prior = session_.state();
     session_.startIfDue(toNs(now), clock);
+    if (prior != session_.state()) {
+      if (session_.running()) applied_revision_ = desired_revision_;
+      ++control_revision_;
+    }
     const auto event = scheduler_.tick(toNs(now), clock.clock_ok);
     if (event) {
       current_cycle_ = event->cycle_id;
+      ++control_revision_;
       last_jitter_ns_ = event->jitter_ns;
       publishCycle(*event, now);
       publishSnapshot(*event, now, clock);
@@ -735,9 +752,10 @@ class SwarmRuntimeNode {
   ros::Publisher weaknet_state_pub_;
   ros::Publisher recommendation_pub_;
   ros::Publisher budget_pub_;
-  ros::ServiceServer start_srv_;
-  ros::ServiceServer stop_srv_;
-  ros::ServiceServer status_srv_;
+  // Declared before timers: timers die before their native owner and IO host.
+  std::unique_ptr<swarm_sync::RuntimeControl> control_;
+  ros::WallTimer control_timer_;
+  uint64_t control_revision_ = 1, desired_revision_ = 1, applied_revision_ = 0;
   ros::Timer timer_;
   uint64_t current_cycle_ = 0;
   int64_t last_jitter_ns_ = 0;

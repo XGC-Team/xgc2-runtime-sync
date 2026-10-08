@@ -112,7 +112,7 @@ swarm/{team}/session/{session}/cmd/stop
 swarm/{team}/session/{session}/ack/{uav}
 ```
 
-## ROS1 Topics and Services
+## ROS1 data topics and XRPC control
 
 Expected topics:
 
@@ -122,14 +122,13 @@ Expected topics:
 - `/swarm_sync/sample_stats`
 - Configured import topics such as `/remote_solution/<peer>`
 
-Expected services:
+Control routes (see `contracts/runtime-sync-v1.md` for exact payloads):
 
-- `/swarm_sync/start_session`
-- `/swarm_sync/stop_session`
-- `/swarm_sync/get_runtime_status`
+- XRPC `POST /v1/runtime-sync/start`
+- XRPC `POST /v1/runtime-sync/stop`
+- XRPC `POST /v1/runtime-sync/status`
 
-`GetRuntimeStatus` includes clock offset, uncertainty, quality, selected
+`XRPC status snapshot` includes clock offset, uncertainty, quality, selected
 source, and phase so the ground station can make a hard preflight gate decision.
 
-The concrete node implementation and build wiring are intentionally left for
-the later integration step.
+The native node owns completion and exposes retained receipts and bounded observations. See `contracts/runtime-sync-v1.md` and the real native smoke test.

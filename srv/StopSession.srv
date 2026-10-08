@@ -1,5 +1,0 @@
-string session_id
-string reason
----
-bool accepted
-string message

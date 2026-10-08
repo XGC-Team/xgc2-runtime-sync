@@ -35,7 +35,7 @@ Cycle scheduler:
 - cycle_id starts at 0 when epoch is reached.
 - 20 Hz for 100 cycles increments continuously.
 - Delayed callbacks do not replay historical cycles.
-- StopSession stops new cycles.
+- XRPC stop request stops new cycles.
 
 Envelope codec:
 
@@ -99,7 +99,7 @@ Ground-station session start:
 
 - Ground station distributes config.
 - Vehicles ACK.
-- Ground station sends StartSession with a shared epoch.
+- Ground station sends XRPC start request with a shared epoch.
 - Vehicles enter RUNNING at the same epoch and cycle id.
 
 ROS1 adapter:
@@ -165,7 +165,7 @@ After build metadata and source integration:
   entries marked missing, without blocking cycle advancement.
 - Runtime smoke tests receive both SyncedCycle and CycleSnapshot and verify
   matching cycle ids.
-- `/swarm_sync/get_runtime_status` responds.
-- `/swarm_sync/get_runtime_status` reports clock offset, uncertainty, quality,
+- XRPC `POST /v1/runtime-sync/status` responds.
+- XRPC `POST /v1/runtime-sync/status` reports clock offset, uncertainty, quality,
   source, and phase.
 - The configured allowlist controls all topic forwarding.

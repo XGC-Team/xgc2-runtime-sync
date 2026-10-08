@@ -32,9 +32,9 @@ Messages:
 
 Services:
 
-- StartSession
-- StopSession
-- GetRuntimeStatus
+- XRPC start request
+- XRPC stop request
+- XRPC status snapshot
 
 Config:
 
