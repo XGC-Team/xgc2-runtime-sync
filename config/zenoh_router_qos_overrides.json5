@@ -1,7 +1,0 @@
-{
-  // Example only. Verify exact syntax against the locked Zenoh version.
-  // Intended use: keep realtime channels high priority and drop-congested,
-  // while background/debug channels are low priority and rate limited.
-  plugins: {},
-  listen: { endpoints: ["tcp/0.0.0.0:7447"] }
-}
