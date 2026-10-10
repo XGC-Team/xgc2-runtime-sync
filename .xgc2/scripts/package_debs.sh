@@ -66,10 +66,6 @@ mkdir -p "${pkg_root}"
 
 copy_path "${PREFIX_ROOT}/share/${ROS_PACKAGE}" "${pkg_root}"
 copy_path "${PREFIX_ROOT}/include/${ROS_PACKAGE}" "${pkg_root}"
-copy_path "${PREFIX_ROOT}/include/swarm_sync_core" "${pkg_root}"
-copy_path "${PREFIX_ROOT}/include/swarm_sync_ros1" "${pkg_root}"
-copy_path "${PREFIX_ROOT}/lib/libswarm_sync_core.so" "${pkg_root}"
-copy_path "${PREFIX_ROOT}/lib/libswarm_sync_ros1_adapter.so" "${pkg_root}"
 copy_path "${PREFIX_ROOT}/lib/${ROS_PACKAGE}" "${pkg_root}"
 copy_path "${PREFIX_ROOT}/lib/python3/dist-packages/${ROS_PACKAGE}" "${pkg_root}"
 copy_path "${PREFIX_ROOT}/share/gennodejs/ros/${ROS_PACKAGE}" "${pkg_root}"
@@ -84,8 +80,8 @@ Section: misc
 Priority: optional
 Architecture: ${ARCH}
 Maintainer: XGC2 <apt@example.com>
-Depends: libxgc2-xrpc1 (>= 0.1.0), libboost-json-dev (>= 1.75), ros-noetic-message-runtime, ros-noetic-roscpp, ros-noetic-std-msgs
-Description: XGC2 runtime synchronization coordinator, weak-network telemetry, messages, and swarm sync core for ROS1
+Depends: ros-noetic-message-runtime, ros-noetic-roscpp
+Description: XGC2 same-host synchronized periodic trigger coordinator and messages for ROS1
 EOF
 printf 'xgc2-runtime-sync package\n' > "${pkg_root}/usr/share/doc/${PACKAGE}/README"
 chmod 0755 "${pkg_root}/DEBIAN"

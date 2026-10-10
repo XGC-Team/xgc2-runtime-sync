@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
 <package format="2">
   <name>periodic_sync</name>
-  <version>1.6.0</version>
+  <version>2.0.0</version>
   <description>ROS1 coordinator and messages for synchronized periodic triggering of several processes on one host.</description>
 
   <maintainer email="lxk@todo.todo">lxk</maintainer>
