@@ -1,0 +1,7 @@
+# Topic names of the TRO DMPC deployment, as set for sync_coordinator by
+# unicycle_ugv_controller/config/launch/xgc_mixed_planning_8.yaml.
+ready_topic: /formation/ready
+trigger_topic: /formation/sync_trigger
+ack_topic: /formation/sync_ack
+statistics_topic: /formation/sync_statistics
+events_topic: /formation/sync_events
